@@ -15,7 +15,7 @@ import h5py
 import numpy as np
 from torch.utils.data import Dataset
 
-from utils.ply import read_ply
+from utils.ply import read_ply, write_ply
 from sklearn.neighbors import KDTree
 
 def download():
@@ -107,7 +107,7 @@ class MiniChallenge(Dataset):
         clouds = [read_ply(f) for f in filenames]
         self.points = [np.vstack((cloud['x'], cloud['y'], cloud['z'])).T for cloud in clouds]
         if self.partition == "test":
-            self.labels = [np.zeros(cloud.shape[0],dtype=np.int64) for cloud in self.points]
+            self.labels = [np.zeros(cloud.shape[0],dtype=np.int32) for cloud in self.points]
         else:
             self.labels = [cloud['class'].astype(np.int64) - 1 for cloud in clouds]
             to_keep = [l >= 0 for l in self.labels]
@@ -115,22 +115,34 @@ class MiniChallenge(Dataset):
             self.points = [l[k] for l, k in zip(self.points, to_keep)]
         self.trees = [KDTree(p[:,:2]) for p in self.points]
         self.wherelabels = [[np.nonzero(l == c)[0] for c in range(6)] for l in self.labels]
-        for w in self.wherelabels:
-            for c in range(6):
-                print(w[c].shape)
-
+        
     def __getitem__(self, item):
-        p = item // 6
-        c = item % 6
-        if p != 1 and c == 3: # No pedestrians on some of the point clouds (assumes glob sort files)
-            p = 1
-        idx = np.random.choice(self.wherelabels[p][c])
-        indices = self.trees[p].query_radius(self.points[p][np.newaxis,idx,:2], r=self.radius)
-        indices = np.random.choice(indices[0], size=self.num_points)
-        return self.points[p][indices], self.labels[p][indices]
+        if self.partition == 'train':
+            p = item // 6
+            c = item % 6
+            if p != 1 and c == 3: # No pedestrians on some of the point clouds (assumes glob sort files)
+                p = 1
+            idx = np.random.choice(self.wherelabels[p][c])
+            indices = self.trees[p].query_radius(self.points[p][np.newaxis,idx,:2], r=self.radius)
+            indices = np.random.choice(indices[0], size=self.num_points)
+            return self.points[p][indices], self.labels[p][indices]
+        else:
+            idx = np.random.randint(len(self.points[0]))
+            indices = self.trees[0].query_radius(self.points[0][np.newaxis,idx,:2], r=self.radius)
+            indices = np.random.choice(indices[0], size=self.num_points)
+            return self.points[0][indices], indices
 
     def __len__(self):
-        return 6 * len(self.points)
+        return 6 * len(self.points) if self.partition == "train" else 32
+    
+    def update_labels(self, indices, labels):
+        self.labels[0][indices] = labels + 1
+    
+    def write_cloud(self, path):
+        points = self.points[0]
+        labels = self.labels[0]
+        write_ply(path, [points, labels] , ['x','y','z', 'class'] )
+
 
 if __name__ == '__main__':
     train = MiniChallenge("data/MiniChallenge", 5)

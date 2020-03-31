@@ -38,9 +38,9 @@ def _init_():
 
 def train(args, io):
     # dataset = ModelNet40(partition='train', num_points=args.num_points)
-    dataset = MiniChallenge("data/MiniChallenge/", args.num_points, partition='train')    
+    dataset = MiniChallenge("data/MiniChallenge/", args.num_points, partition='train', radius=args.radius)    
     train_loader = DataLoader(dataset, num_workers=6,
-                              batch_size=args.batch_size, shuffle=True, drop_last=False)
+                              batch_size=args.batch_size, shuffle=False, drop_last=False)
     # test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=8,
     #                          batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
@@ -139,37 +139,6 @@ def train(args, io):
         #     torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
 
 
-def test(args, io):
-    test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points),
-                             batch_size=args.test_batch_size, shuffle=True, drop_last=False)
-
-    device = torch.device("cuda" if args.cuda else "cpu")
-
-    #Try to load models
-    model = DGCNN(args).to(device)
-    model = nn.DataParallel(model)
-    model.load_state_dict(torch.load(args.model_path))
-    model = model.eval()
-    test_acc = 0.0
-    count = 0.0
-    test_true = []
-    test_pred = []
-    for data, label in test_loader:
-
-        data, label = data.to(device), label.to(device).squeeze()
-        data = data.permute(0, 2, 1)
-        batch_size = data.size()[0]
-        logits = model(data)
-        preds = logits.max(dim=1)[1]
-        test_true.append(label.cpu().numpy())
-        test_pred.append(preds.detach().cpu().numpy())
-    test_true = np.concatenate(test_true)
-    test_pred = np.concatenate(test_pred)
-    test_acc = metrics.accuracy_score(test_true, test_pred)
-    avg_per_class_acc = metrics.balanced_accuracy_score(test_true, test_pred)
-    outstr = 'Test :: test acc: %.6f, test avg acc: %.6f'%(test_acc, avg_per_class_acc)
-    io.cprint(outstr)
-
 
 if __name__ == "__main__":
     # Training settings
@@ -209,6 +178,8 @@ if __name__ == "__main__":
                         help='Num of nearest neighbors to use')
     parser.add_argument('--model_path', type=str, default='', metavar='N',
                         help='Pretrained model path')
+    parser.add_argument('--radius', type=int, default=4, metavar='N',
+                        help='Radius for the dataset')
     args = parser.parse_args()
 
     _init_()
