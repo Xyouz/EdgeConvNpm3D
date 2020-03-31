@@ -16,6 +16,7 @@ import numpy as np
 from torch.utils.data import Dataset
 
 from utils.ply import read_ply
+from sklearn.neighbors import KDTree
 
 def download():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -97,35 +98,39 @@ def split_columns(points, labels, gridsize=5):
     return points, labels
 
 class MiniChallenge(Dataset):
-    def __init__(self, path, num_points, partition='train'):
+    def __init__(self, path, num_points, partition='train',radius=2.5):
         super().__init__()
         self.num_points = num_points
         self.partition = partition
+        self.radius = radius
         filenames = glob.glob(path + "/"+partition+"/*.ply")
         clouds = [read_ply(f) for f in filenames]
-        points = [np.vstack((cloud['x'], cloud['y'], cloud['z'])).T for cloud in clouds]
+        self.points = [np.vstack((cloud['x'], cloud['y'], cloud['z'])).T for cloud in clouds]
         if self.partition == "test":
-            labels = [np.zeros(cloud.shape[0],dtype=np.int64) for cloud in self.points]
+            self.labels = [np.zeros(cloud.shape[0],dtype=np.int64) for cloud in self.points]
         else:
-            labels = [cloud['class'].astype(np.int64) - 1 for cloud in clouds]
-            to_keep = [l >= 0 for l in labels]
-            labels = [l[k] for l, k in zip(labels, to_keep)]
-            points = [l[k] for l, k in zip(points, to_keep)]
-        self.points = []
-        self.labels = []
-        for p,l in zip(points, labels):
-            p, l = split_columns(p, l)
-            self.points = self.points + p
-            self.labels = self.labels + l
-        
+            self.labels = [cloud['class'].astype(np.int64) - 1 for cloud in clouds]
+            to_keep = [l >= 0 for l in self.labels]
+            self.labels = [l[k] for l, k in zip(self.labels, to_keep)]
+            self.points = [l[k] for l, k in zip(self.points, to_keep)]
+        self.trees = [KDTree(p[:,:2]) for p in self.points]
+        self.wherelabels = [[np.nonzero(l == c)[0] for c in range(6)] for l in self.labels]
+        for w in self.wherelabels:
+            for c in range(6):
+                print(w[c].shape)
 
     def __getitem__(self, item):
-        if self.partition == "train":
-            idx = np.random.choice(np.arange(len(self.points[item])), size=self.num_points, replace=True)
-            return self.points[item][idx], self.labels[item][idx]
+        p = item // 6
+        c = item % 6
+        if p != 1 and c == 3: # No pedestrians on some of the point clouds (assumes glob sort files)
+            p = 1
+        idx = np.random.choice(self.wherelabels[p][c])
+        indices = self.trees[p].query_radius(self.points[p][np.newaxis,idx,:2], r=self.radius)
+        indices = np.random.choice(indices[0], size=self.num_points)
+        return self.points[p][indices], self.labels[p][indices]
 
     def __len__(self):
-        return len(self.points)
+        return 6 * len(self.points)
 
 if __name__ == '__main__':
     train = MiniChallenge("data/MiniChallenge", 5)
