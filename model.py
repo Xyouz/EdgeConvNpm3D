@@ -162,11 +162,67 @@ class DGCNN(nn.Module):
         x = self.linear3(x)
         return x
 
+class TransformNet(nn.Module):
+    def __init__(self, args):
+        super().__init__()
+        self.args = args
+        self.device = torch.device("cpu" if self.args.no_cuda else "cuda")
+        self.k = self.args.k
+        self.num_points = self.args.num_points
+        self.bn1 = nn.BatchNorm2d(64)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.bn3 = nn.BatchNorm1d(1024)
+        self.bn4 = nn.BatchNorm1d(512)
+        self.bn5 = nn.BatchNorm1d(256)
+        
+        self.conv1 = nn.Conv2d(6,64, kernel_size=1, bias=False)
+        self.lkrl1 = nn.LeakyReLU(negative_slope=0.2)
+        self.conv2 = nn.Conv2d(64,128, kernel_size=1, bias=False)
+        self.lkrl2 = nn.LeakyReLU(negative_slope=0.2)
+        self.maxpool1 = nn.MaxPool2d((1,self.k))
+
+        self.conv3 = nn.Conv1d(128,1024, kernel_size=1, bias=False)
+        self.lkrl3 = nn.LeakyReLU(negative_slope=0.2)
+        self.maxpool2 = nn.MaxPool1d(self.num_points)
+
+        self.fc1 = nn.Linear(1024,512,bias=False)
+        self.lkrl4 = nn.LeakyReLU(negative_slope=0.2)
+        self.fc2 = nn.Linear(512,256,bias=False)
+        self.lkrl5 = nn.LeakyReLU(negative_slope=0.2)
+
+        self.fc3 = nn.Linear(256,9)
+        self.fc4 = nn.Linear(256,3)
+
+    def forward(self, input):
+        x = get_graph_feature(input, k=self.k)
+        x = self.lkrl1(self.bn1(self.conv1(x)))
+        x = self.lkrl2(self.bn2(self.conv2(x)))
+        x = self.maxpool1(x)
+
+        x = torch.squeeze(x)
+        x = self.lkrl3(self.bn3(self.conv3(x)))
+        x = self.maxpool2(x)
+        x = torch.squeeze(x)
+
+        x = self.lkrl4(self.bn4(self.fc1(x)))
+        x = self.lkrl5(self.bn5(self.fc2(x)))
+
+        bias = self.fc4(x).view(-1,1,3)
+        matrix = torch.eye(3, device=self.device) + self.fc3(x).view(-1,3,3)
+        
+        mul = torch.bmm(input.transpose(2,1), matrix)
+        return (mul + bias).transpose(2,1)
+
+
+
+
 class DGCNNSeg(nn.Module):
     def __init__(self, args, output_channels=6):
         super().__init__()
         self.args = args
         self.k = args.k
+
+        self.STN = TransformNet(self.args)
 
         self.edge1 = EdgeConv(3,[64,64],self.k)
         self.edge2 = EdgeConv(64,[64,64],self.k)
@@ -201,8 +257,11 @@ class DGCNNSeg(nn.Module):
         
 
     def forward(self, x):
+        x = self.STN(x)
+        
         x1 = self.edge1(x)
         x2 = self.edge2(x1)
+
         x3 = self.edge3(x2)
         x123 = torch.cat((x1,x2,x3), dim=1)     
 
