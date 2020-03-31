@@ -1,5 +1,8 @@
 # Dynamic Graph CNN for Learning on Point Clouds (PyTorch)
 
+## Point Cloud Segmentation
+python main_seg.py --exp_name=dgcnn_seg --model=dgcnn --num_points=1500 --k=20 --use_sgd=True --epochs 100
+
 ## Point Cloud Classification
 * Run the training script:
 
