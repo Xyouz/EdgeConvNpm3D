@@ -54,12 +54,18 @@ def load_data(partition):
 
 
 def translate_pointcloud(pointcloud):
-    xyz1 = np.random.uniform(low=2./3., high=3./2., size=[3])
-    xyz2 = np.random.uniform(low=-0.2, high=0.2, size=[3])
+    xyz = np.random.uniform(low=-10, high=10, size=[2])
        
-    translated_pointcloud = np.add(np.multiply(pointcloud, xyz1), xyz2).astype('float32')
+    translated_pointcloud = pointcloud
+    translated_pointcloud[:,:2] += xyz
     return translated_pointcloud
 
+def rotate_pointcloud(pointcloud):
+    thetaXY = 2 * np.pi * np.random.rand()
+    matXY = np.array([[np.cos(thetaXY), -np.sin(thetaXY)],[np.sin(thetaXY), np.cos(thetaXY)]])
+    
+    pointcloud[:,:2] = pointcloud[:,:2] @ matXY
+    return pointcloud
 
 def jitter_pointcloud(pointcloud, sigma=0.01, clip=0.02):
     N, C = pointcloud.shape
@@ -109,7 +115,7 @@ class MiniChallenge(Dataset):
         filenames = glob.glob(path + "/"+partition+"/*al.ply")
         clouds = [read_ply(f) for f in filenames]
         self.points = [np.vstack((cloud['x'], cloud['y'], cloud['z'],cloud['nx'], cloud['ny'], cloud['nz'])).T for cloud in clouds]
-        # self.means = [points.mean(axis=0)[:2] for points in self.points]
+        self.means = [points.mean(axis=0)[:2] for points in self.points]
         if self.partition == "test":
             self.labels = [np.zeros(cloud.shape[0],dtype=np.int32) for cloud in self.points]
         else:
@@ -137,8 +143,8 @@ class MiniChallenge(Dataset):
             indices = self.trees[p].query_radius(self.points[p][np.newaxis,idx,:2], r=self.radius)
             indices = np.random.choice(indices[0], size=self.num_points)
             points = self.points[p][indices]
-            # points[:,:2] -= self.means[p]
-            return points, self.labels[p][indices]
+            points[:,:2] -= self.means[p]
+            return translate_pointcloud(rotate_pointcloud(points)), self.labels[p][indices]
         else:
             idx = np.random.randint(len(self.points[0]))
             indices = self.trees[0].query_radius(self.points[0][np.newaxis,idx,:2], r=self.radius)
