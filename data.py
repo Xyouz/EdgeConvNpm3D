@@ -14,9 +14,12 @@ import glob
 import h5py
 import numpy as np
 from torch.utils.data import Dataset
+import random
 
 from utils.ply import read_ply, write_ply
 from sklearn.neighbors import KDTree
+
+MAX_INT = 2*32-1
 
 def download():
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -121,6 +124,8 @@ class MiniChallenge(Dataset):
 
 
     def __getitem__(self, item):
+        # Solve numpy RNG seeding issue
+        np.random.seed(random.randrange(MAX_INT))
         if self.partition == 'train':
             p = item // 6
             c = item % 6
