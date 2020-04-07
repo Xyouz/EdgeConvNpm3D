@@ -109,6 +109,7 @@ class MiniChallenge(Dataset):
         filenames = glob.glob(path + "/"+partition+"/*al.ply")
         clouds = [read_ply(f) for f in filenames]
         self.points = [np.vstack((cloud['x'], cloud['y'], cloud['z'],cloud['nx'], cloud['ny'], cloud['nz'])).T for cloud in clouds]
+        # self.means = [points.mean(axis=0)[:2] for points in self.points]
         if self.partition == "test":
             self.labels = [np.zeros(cloud.shape[0],dtype=np.int32) for cloud in self.points]
         else:
@@ -135,7 +136,9 @@ class MiniChallenge(Dataset):
             idx = np.random.choice(self.wherelabels[p][c])
             indices = self.trees[p].query_radius(self.points[p][np.newaxis,idx,:2], r=self.radius)
             indices = np.random.choice(indices[0], size=self.num_points)
-            return self.points[p][indices], self.labels[p][indices]
+            points = self.points[p][indices]
+            # points[:,:2] -= self.means[p]
+            return points, self.labels[p][indices]
         else:
             idx = np.random.randint(len(self.points[0]))
             indices = self.trees[0].query_radius(self.points[0][np.newaxis,idx,:2], r=self.radius)
