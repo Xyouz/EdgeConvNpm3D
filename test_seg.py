@@ -22,7 +22,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from util import cal_loss, IOStream
 import sklearn.metrics as metrics
-
+import random
 from tqdm import tqdm
 
 
@@ -39,11 +39,15 @@ def _init_():
     os.system('cp util.py checkpoints' + '/' + args.exp_name + '/' + 'util.py.backup')
     os.system('cp data.py checkpoints' + '/' + args.exp_name + '/' + 'data.py.backup')
 
+# Solve numpy RNG seeding issue
+MAX_INT = 2**32 - 1
+def worker_init_fn(worker_id):                                                          
+    np.random.seed(random.randrange(MAX_INT))
 
 def test(args, io):
     dataset = MiniChallenge("data/MiniChallenge/", args.num_points, partition='test', radius=args.radius)    
     test_loader = DataLoader(dataset, num_workers=6,
-                              batch_size=args.batch_size, shuffle=False, drop_last=False)
+                              batch_size=args.batch_size, shuffle=False, drop_last=False, worker_init_fn=worker_init_fn)
    
     
     device = torch.device("cuda" if args.cuda else "cpu")

@@ -22,7 +22,7 @@ import numpy as np
 from torch.utils.data import DataLoader
 from util import cal_loss, IOStream, FocalLoss
 import sklearn.metrics as metrics
-
+import random
 
 def _init_():
     if not os.path.exists('checkpoints'):
@@ -36,11 +36,16 @@ def _init_():
     os.system('cp util.py checkpoints' + '/' + args.exp_name + '/' + 'util.py.backup')
     os.system('cp data.py checkpoints' + '/' + args.exp_name + '/' + 'data.py.backup')
 
+# Solve numpy RNG seeding issue
+MAX_INT = 2**32 - 1
+def worker_init_fn(worker_id):                                                          
+    np.random.seed(random.randrange(MAX_INT))
+
 def train(args, io):
     # dataset = ModelNet40(partition='train', num_points=args.num_points)
     dataset = MiniChallenge("data/MiniChallenge/", args.num_points, partition='train', radius=args.radius)    
     train_loader = DataLoader(dataset, num_workers=6,
-                              batch_size=args.batch_size, shuffle=False, drop_last=False)
+                              batch_size=args.batch_size, shuffle=False, drop_last=False, worker_init_fn=worker_init_fn)
     # test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=8,
     #                          batch_size=args.test_batch_size, shuffle=True, drop_last=False)
 
@@ -68,8 +73,8 @@ def train(args, io):
 
     scheduler = CosineAnnealingLR(opt, args.epochs, eta_min=args.lr)
     
-    criterion = cal_loss
-    # criterion = FocalLoss(2)
+    #criterion = cal_loss
+    criterion = FocalLoss(2)
 
     best_test_acc = 0
     for epoch in range(args.epochs):
