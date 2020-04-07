@@ -190,7 +190,7 @@ class TransformNet(nn.Module):
         self.fc2 = nn.Linear(512,256,bias=False)
         self.lkrl5 = nn.LeakyReLU(negative_slope=0.2)
 
-        self.fc3 = nn.Linear(256,2*9)
+        self.fc3 = nn.Linear(256,9)
         self.fc4 = nn.Linear(256,6)
 
     def forward(self, input):
@@ -211,11 +211,10 @@ class TransformNet(nn.Module):
         bias = self.fc4(x).view(-1,1,6)
         matrix = self.fc3(x)
 
-        matrix_pos = matrix[:,:9].reshape(-1,3,3)
-        matrix_norm = matrix[:,9:].reshape(-1,3,3)
+        submatrix = matrix.reshape(-1,3,3)
         matrix = torch.eye(6, device=self.device).repeat(batch_size,1,1)
-        matrix[:,:3,:3] = matrix_pos
-        matrix[:,3:,3:] = matrix_norm
+        matrix[:,:3,:3] = submatrix
+        matrix[:,3:,3:] = submatrix
 
         mul = torch.bmm(input.transpose(2,1), matrix)
         return (mul + bias).transpose(2,1)
