@@ -124,13 +124,14 @@ class MiniChallenge(Dataset):
 
 
     def __getitem__(self, item):
-        # Solve numpy RNG seeding issue
-        np.random.seed(random.randrange(MAX_INT))
         if self.partition == 'train':
-            p = item // 6
-            c = item % 6
-            if c == 3: # No pedestrians on some of the point clouds (assumes glob sort files)
+            p = item // 5
+            c = item % 5
+            if c >= 3: # No pedestrians on some of the point clouds
+                c += 1
+            if item == 15: 
                 p = self.pedCloud
+                c = 3
             idx = np.random.choice(self.wherelabels[p][c])
             indices = self.trees[p].query_radius(self.points[p][np.newaxis,idx,:2], r=self.radius)
             indices = np.random.choice(indices[0], size=self.num_points)
@@ -142,7 +143,7 @@ class MiniChallenge(Dataset):
             return self.points[0][indices], indices
 
     def __len__(self):
-        return 6 * len(self.points) if self.partition == "train" else 32
+        return 5 * len(self.points) + 1 if self.partition == "train" else 32
     
     def update_labels(self, indices, labels):
         labels = labels.reshape(-1)
