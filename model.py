@@ -175,7 +175,7 @@ class TransformNet(nn.Module):
         self.bn4 = nn.BatchNorm1d(512)
         self.bn5 = nn.BatchNorm1d(256)
         
-        self.conv1 = nn.Conv2d(6,64, kernel_size=1, bias=False)
+        self.conv1 = nn.Conv2d(12,64, kernel_size=1, bias=False)
         self.lkrl1 = nn.LeakyReLU(negative_slope=0.2)
         self.conv2 = nn.Conv2d(64,128, kernel_size=1, bias=False)
         self.lkrl2 = nn.LeakyReLU(negative_slope=0.2)
@@ -222,9 +222,9 @@ class DGCNNSeg(nn.Module):
         self.args = args
         self.k = args.k
 
-        self.STN = TransformNet(self.args)
+        #self.STN = TransformNet(self.args)
 
-        self.edge1 = EdgeConv(3,[64,64],self.k)
+        self.edge1 = EdgeConv(6,[64,64],self.k)
         self.edge2 = EdgeConv(64,[64,64],self.k)
         self.edge3 = EdgeConv(64,64,self.k)
 
@@ -257,7 +257,7 @@ class DGCNNSeg(nn.Module):
         
 
     def forward(self, x):
-        x = self.STN(x)
+        #x = self.STN(x)
         
         x1 = self.edge1(x)
         x2 = self.edge2(x1)
