@@ -59,7 +59,7 @@ def test(args, io):
                 data = data.permute(0, 2, 1)
                 logits = model(data)
                 preds = logits.argmax(dim=1).detach().cpu().numpy()
-                dataset.update_labels(indices, preds)
+                dataset.update_labels(indices.numpy(), preds)
             
     dataset.write_cloud("checkpoints/cloud.ply")
 
