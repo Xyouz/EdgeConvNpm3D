@@ -190,10 +190,11 @@ class TransformNet(nn.Module):
         self.fc2 = nn.Linear(512,256,bias=False)
         self.lkrl5 = nn.LeakyReLU(negative_slope=0.2)
 
-        self.fc3 = nn.Linear(256,9)
-        self.fc4 = nn.Linear(256,3)
+        self.fc3 = nn.Linear(256,2*9)
+        self.fc4 = nn.Linear(256,6)
 
     def forward(self, input):
+        batch_size = input.shape[0]
         x = get_graph_feature(input, k=self.k)
         x = self.lkrl1(self.bn1(self.conv1(x)))
         x = self.lkrl2(self.bn2(self.conv2(x)))
@@ -207,9 +208,15 @@ class TransformNet(nn.Module):
         x = self.lkrl4(self.bn4(self.fc1(x)))
         x = self.lkrl5(self.bn5(self.fc2(x)))
 
-        bias = self.fc4(x).view(-1,1,3)
-        matrix = torch.eye(3, device=self.device) + self.fc3(x).view(-1,3,3)
-        
+        bias = self.fc4(x).view(-1,1,6)
+        matrix = self.fc3(x)
+
+        matrix_pos = matrix[:,:9].reshape(-1,3,3)
+        matrix_norm = matrix[:,9:].reshape(-1,3,3)
+        matrix = torch.eye(6, device=self.device).repeat(batch_size,1,1)
+        matrix[:,:3,:3] = matrix_pos
+        matrix[:,3:,3:] = matrix_norm
+
         mul = torch.bmm(input.transpose(2,1), matrix)
         return (mul + bias).transpose(2,1)
 
@@ -222,7 +229,7 @@ class DGCNNSeg(nn.Module):
         self.args = args
         self.k = args.k
 
-        #self.STN = TransformNet(self.args)
+        self.STN = TransformNet(self.args)
 
         self.edge1 = EdgeConv(6,[64,64],self.k)
         self.edge2 = EdgeConv(64,[64,64],self.k)
@@ -257,7 +264,7 @@ class DGCNNSeg(nn.Module):
         
 
     def forward(self, x):
-        #x = self.STN(x)
+        x = self.STN(x)
         
         x1 = self.edge1(x)
         x2 = self.edge2(x1)
