@@ -103,25 +103,29 @@ class MiniChallenge(Dataset):
         self.num_points = num_points
         self.partition = partition
         self.radius = radius
-        filenames = glob.glob(path + "/"+partition+"/*.ply")
+        filenames = glob.glob(path + "/"+partition+"/*al.ply")
         clouds = [read_ply(f) for f in filenames]
-        self.points = [np.vstack((cloud['x'], cloud['y'], cloud['z'])).T for cloud in clouds]
+        self.points = [np.vstack((cloud['x'], cloud['y'], cloud['z'],cloud['nx'], cloud['ny'], cloud['nz'])).T for cloud in clouds]
         if self.partition == "test":
             self.labels = [np.zeros(cloud.shape[0],dtype=np.int32) for cloud in self.points]
         else:
-            self.labels = [cloud['class'].astype(np.int64) - 1 for cloud in clouds]
+            self.labels = [cloud['scalar_class'].astype(np.int64) - 1 for cloud in clouds]
             to_keep = [l >= 0 for l in self.labels]
             self.labels = [l[k] for l, k in zip(self.labels, to_keep)]
             self.points = [l[k] for l, k in zip(self.points, to_keep)]
+            self.wherelabels = [[np.nonzero(l == c)[0] for c in range(6)] for l in self.labels]
+            # Only one of the clouds has pedestrians
+            self.pedCloud = max(range(len(clouds)), key=lambda i: self.wherelabels[i][3].shape)
+
         self.trees = [KDTree(p[:,:2]) for p in self.points]
-        self.wherelabels = [[np.nonzero(l == c)[0] for c in range(6)] for l in self.labels]
-        
+
+
     def __getitem__(self, item):
         if self.partition == 'train':
             p = item // 6
             c = item % 6
-            if p != 1 and c == 3: # No pedestrians on some of the point clouds (assumes glob sort files)
-                p = 1
+            if c == 3: # No pedestrians on some of the point clouds (assumes glob sort files)
+                p = self.pedCloud
             idx = np.random.choice(self.wherelabels[p][c])
             indices = self.trees[p].query_radius(self.points[p][np.newaxis,idx,:2], r=self.radius)
             indices = np.random.choice(indices[0], size=self.num_points)
@@ -136,12 +140,14 @@ class MiniChallenge(Dataset):
         return 6 * len(self.points) if self.partition == "train" else 32
     
     def update_labels(self, indices, labels):
+        labels = labels.reshape(-1)
+        indices = indices.reshape(-1)
         self.labels[0][indices] = labels + 1
     
     def write_cloud(self, path):
         points = self.points[0]
         labels = self.labels[0]
-        write_ply(path, [points, labels] , ['x','y','z', 'class'] )
+        write_ply(path, [points[:,:3], labels] , ['x','y','z', 'class'] )
 
 
 if __name__ == '__main__':
