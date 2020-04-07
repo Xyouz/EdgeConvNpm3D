@@ -20,7 +20,7 @@ from data import ModelNet40, MiniChallenge
 from model import PointNet, DGCNN, DGCNNSeg
 import numpy as np
 from torch.utils.data import DataLoader
-from util import cal_loss, IOStream
+from util import cal_loss, IOStream, FocalLoss
 import sklearn.metrics as metrics
 
 
@@ -69,6 +69,7 @@ def train(args, io):
     scheduler = CosineAnnealingLR(opt, args.epochs, eta_min=args.lr)
     
     criterion = cal_loss
+    # criterion = FocalLoss(2)
 
     best_test_acc = 0
     for epoch in range(args.epochs):
