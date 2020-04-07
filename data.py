@@ -65,6 +65,7 @@ def rotate_pointcloud(pointcloud):
     matXY = np.array([[np.cos(thetaXY), -np.sin(thetaXY)],[np.sin(thetaXY), np.cos(thetaXY)]])
     
     pointcloud[:,:2] = pointcloud[:,:2] @ matXY
+    pointcloud[:,3:5] =pointcloud[:,3:5] @ matXY
     return pointcloud
 
 def jitter_pointcloud(pointcloud, sigma=0.01, clip=0.02):
