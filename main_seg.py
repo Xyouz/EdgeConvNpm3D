@@ -53,6 +53,7 @@ def train(args, io):
         model = DGCNNSeg(args, output_channels=6).to(device)
     else:
         raise Exception("Not implemented")
+    
     print(str(model))
 
     model = nn.DataParallel(model)
@@ -71,7 +72,6 @@ def train(args, io):
 
     best_test_acc = 0
     for epoch in range(args.epochs):
-        scheduler.step()
         ####################
         # Train
         ####################
@@ -86,8 +86,8 @@ def train(args, io):
             batch_size = data.size()[0]
             opt.zero_grad()
             logits = model(data)
-            logits = logits.permute(0,2,1).reshape(-1,6)
-            loss = criterion(logits, label)
+            logits = logits.permute(0,2,1).contiguous().reshape(-1,6)
+            loss = criterion(logits, label.view(-1,1).squeeze())
             loss.backward()
             opt.step()
             preds = logits.max(dim=1)[1]
@@ -95,6 +95,7 @@ def train(args, io):
             train_loss += loss.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
+        scheduler.step()
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
         outstr = 'Train %d, loss: %.6f, train acc: %.6f, train avg acc: %.6f' % (epoch,
