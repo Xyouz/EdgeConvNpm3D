@@ -25,6 +25,8 @@ import sklearn.metrics as metrics
 
 from tqdm import tqdm
 
+
+
 def _init_():
     if not os.path.exists('checkpoints'):
         os.makedirs('checkpoints')
@@ -59,7 +61,7 @@ def test(args, io):
                 data = data.permute(0, 2, 1)
                 logits = model(data)
                 preds = logits.argmax(dim=1).detach().cpu().numpy()
-                dataset.update_labels(indices.numpy(), preds)
+            dataset.update_labels(indices.numpy(), preds)
             
     dataset.write_cloud("checkpoints/cloud.ply")
 
@@ -120,7 +122,5 @@ if __name__ == "__main__":
     else:
         io.cprint('Using CPU')
 
-    if not args.eval:
-        train(args, io)
-    else:
-        test(args, io)
+
+    test(args, io)
