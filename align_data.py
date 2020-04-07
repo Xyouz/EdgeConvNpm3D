@@ -92,15 +92,15 @@ if __name__ == '__main__':
         cloud = read_ply(fname)
         points = np.vstack((cloud['x'], cloud['y'], cloud['z'])).T
 
-        normals = computenormals(points)
+        points = alignCloud(points).astype(np.float32)
 
         if args.labels:
             labels = cloud['class']
-            data = [points, normals, labels] 
-            colname = ['x','y','z', 'nx', 'ny', 'nz', 'class']
+            data = [points, labels] 
+            colname = ['x','y','z', 'class']
         else:
-            data = [points, normals]
-            colname = ['x','y','z', 'nx', 'ny', 'nz']
+            data = [points]
+            colname = ['x','y','z',]
         
         write_ply(fname[:-4]+"_al.ply", data, colname)
         
