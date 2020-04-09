@@ -228,7 +228,7 @@ class DGCNNSeg(nn.Module):
         self.args = args
         self.k = args.k
 
-        self.STN = TransformNet(self.args)
+        # self.STN = TransformNet(self.args)
 
         self.edge1 = EdgeConv(6,[64,64],self.k)
         self.edge2 = EdgeConv(64,[64,64],self.k)
@@ -263,7 +263,7 @@ class DGCNNSeg(nn.Module):
         
 
     def forward(self, x):
-        x = self.STN(x)
+        # x = self.STN(x)
         
         x1 = self.edge1(x)
         x2 = self.edge2(x1)
