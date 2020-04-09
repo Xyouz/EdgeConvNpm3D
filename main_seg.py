@@ -101,6 +101,8 @@ def train(args, io):
             train_loss += loss.item() * batch_size
             train_true.append(label.cpu().numpy())
             train_pred.append(preds.detach().cpu().numpy())
+        
+        
         scheduler.step()
         train_true = np.concatenate(train_true)
         train_pred = np.concatenate(train_pred)
@@ -110,8 +112,10 @@ def train(args, io):
                                                                                      train_true, train_pred),
                                                                                  metrics.balanced_accuracy_score(
                                                                                      train_true, train_pred))
-        torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
         io.cprint(outstr)
+        if epoch + 1 % 1000 == 0:
+            torch.save(model.state_dict(), 'checkpoints/{}/models/model{}.t7'.format( args.exp_name,epoch))
+    torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
 
         ####################
         # Test
