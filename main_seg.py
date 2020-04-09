@@ -73,8 +73,8 @@ def train(args, io):
 
     scheduler = CosineAnnealingLR(opt, args.epochs, eta_min=args.lr)
     
-    #criterion = cal_loss
-    criterion = FocalLoss(2)
+    criterion = cal_loss
+    #criterion = FocalLoss(2)
 
     best_test_acc = 0
     for epoch in range(args.epochs):
