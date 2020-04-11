@@ -1,14 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-@Author: Yue Wang
-@Contact: yuewangx@mit.edu
-@File: main.py
-@Time: 2018/10/13 10:39 PM
-"""
 
-
-from __future__ import print_function
 import os
 import argparse
 import torch
@@ -16,8 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from data import ModelNet40, MiniChallenge
-from model import PointNet, DGCNN, DGCNNSeg
+from data import MiniChallenge
+from model import DGCNNSeg
 import numpy as np
 from torch.utils.data import DataLoader
 from util import cal_loss, IOStream, FocalLoss
@@ -31,10 +23,7 @@ def _init_():
         os.makedirs('checkpoints/'+args.exp_name)
     if not os.path.exists('checkpoints/'+args.exp_name+'/'+'models'):
         os.makedirs('checkpoints/'+args.exp_name+'/'+'models')
-    os.system('cp main.py checkpoints'+'/'+args.exp_name+'/'+'main.py.backup')
-    os.system('cp model.py checkpoints' + '/' + args.exp_name + '/' + 'model.py.backup')
-    os.system('cp util.py checkpoints' + '/' + args.exp_name + '/' + 'util.py.backup')
-    os.system('cp data.py checkpoints' + '/' + args.exp_name + '/' + 'data.py.backup')
+
 
 # Solve numpy RNG seeding issue
 MAX_INT = 2**32 - 1
@@ -42,23 +31,15 @@ def worker_init_fn(worker_id):
     np.random.seed(random.randrange(MAX_INT))
 
 def train(args, io):
-    # dataset = ModelNet40(partition='train', num_points=args.num_points)
-    dataset = MiniChallenge("data/MiniChallenge/", args.num_points, partition='train', radius=args.radius)    
-    train_loader = DataLoader(dataset, num_workers=6,
+    dataset = MiniChallenge(args.dataset, args.num_points, partition='train', radius=args.radius)    
+    train_loader = DataLoader(dataset, num_workers=args.workers,
                               batch_size=args.batch_size, shuffle=False, drop_last=False, worker_init_fn=worker_init_fn)
-    # test_loader = DataLoader(ModelNet40(partition='test', num_points=args.num_points), num_workers=8,
-    #                          batch_size=args.test_batch_size, shuffle=True, drop_last=False)
+
 
     device = torch.device("cuda" if args.cuda else "cpu")
 
-    #Try to load models
-    if args.model == 'pointnet':
-        model = PointNet(args).to(device)
-    elif args.model == 'dgcnn':
-        model = DGCNNSeg(args, output_channels=6).to(device)
-    else:
-        raise Exception("Not implemented")
-    
+    # Load models
+    model = DGCNNSeg(args, output_channels=6).to(device)
     print(str(model))
 
     model = nn.DataParallel(model)
@@ -73,14 +54,12 @@ def train(args, io):
 
     scheduler = CosineAnnealingLR(opt, args.epochs, eta_min=args.lr)
     
-    criterion = cal_loss
-    #criterion = FocalLoss(2)
+    if args.loss == "bce":
+        criterion = cal_loss
+    else:
+        criterion = FocalLoss(2)
 
-    best_test_acc = 0
     for epoch in range(args.epochs):
-        ####################
-        # Train
-        ####################
         train_loss = 0.0
         count = 0.0
         model.train()
@@ -117,37 +96,7 @@ def train(args, io):
             torch.save(model.state_dict(), 'checkpoints/{}/models/model{}.t7'.format( args.exp_name,epoch))
     torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
 
-        ####################
-        # Test
-        ####################
-        # test_loss = 0.0
-        # count = 0.0
-        # model.eval()
-        # test_pred = []
-        # test_true = []
-        # for data, label in test_loader:
-        #     data, label = data.to(device), label.to(device).squeeze()
-        #     data = data.permute(0, 2, 1)
-        #     batch_size = data.size()[0]
-        #     logits = model(data)
-        #     loss = criterion(logits, label)
-        #     preds = logits.max(dim=1)[1]
-        #     count += batch_size
-        #     test_loss += loss.item() * batch_size
-        #     test_true.append(label.cpu().numpy())
-        #     test_pred.append(preds.detach().cpu().numpy())
-        # test_true = np.concatenate(test_true)
-        # test_pred = np.concatenate(test_pred)
-        # test_acc = metrics.accuracy_score(test_true, test_pred)
-        # avg_per_class_acc = metrics.balanced_accuracy_score(test_true, test_pred)
-        # outstr = 'Test %d, loss: %.6f, test acc: %.6f, test avg acc: %.6f' % (epoch,
-        #                                                                       test_loss*1.0/count,
-        #                                                                       test_acc,
-        #                                                                       avg_per_class_acc)
-        # io.cprint(outstr)
-        # if test_acc >= best_test_acc:
-        #     best_test_acc = test_acc
-        #     torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
+     
 
 
 
@@ -156,14 +105,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Point Cloud Recognition')
     parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
                         help='Name of the experiment')
-    parser.add_argument('--model', type=str, default='dgcnn', metavar='N',
-                        choices=['pointnet', 'dgcnn'],
-                        help='Model to use, [pointnet, dgcnn]')
-    parser.add_argument('--dataset', type=str, default='modelnet40', metavar='N',
-                        choices=['modelnet40'])
+    parser.add_argument('--dataset', type=str, default='data/MiniChallenge/', metavar='D',
+                        help='location of the dataset')
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
-                        help='Size of batch)')
-    parser.add_argument('--test_batch_size', type=int, default=16, metavar='batch_size',
                         help='Size of batch)')
     parser.add_argument('--epochs', type=int, default=250, metavar='N',
                         help='number of episode to train ')
@@ -189,8 +133,14 @@ if __name__ == "__main__":
                         help='Num of nearest neighbors to use')
     parser.add_argument('--model_path', type=str, default='', metavar='N',
                         help='Pretrained model path')
-    parser.add_argument('--radius', type=int, default=4, metavar='N',
+    parser.add_argument('--loss', type=str, default='bce', metavar='L',
+                        help='Loss to use', choices=["bce","focal"])
+    parser.add_argument('--radius', type=int, default=3, metavar='N',
                         help='Radius for the dataset')
+    parser.add_argument('--tnet', type=int, default=1, choices=[0, 1],
+                        help='add a transformer net in front of the model')
+    parser.add_argument('--workers', type=int, default=0, metavar='N',
+                        help='Number of workers for dataloading.')
     args = parser.parse_args()
 
     _init_()
