@@ -10,19 +10,8 @@ from data import  MiniChallenge
 from model import DGCNNSeg
 import numpy as np
 from torch.utils.data import DataLoader
-from util import cal_loss, IOStream
 import random
 from tqdm import tqdm
-
-
-
-def _init_():
-    if not os.path.exists('checkpoints'):
-        os.makedirs('checkpoints')
-    if not os.path.exists('checkpoints/'+args.exp_name):
-        os.makedirs('checkpoints/'+args.exp_name)
-    if not os.path.exists('checkpoints/'+args.exp_name+'/'+'models'):
-        os.makedirs('checkpoints/'+args.exp_name+'/'+'models')
 
 
 # Solve numpy RNG seeding issue
@@ -30,7 +19,7 @@ MAX_INT = 2**32 - 1
 def worker_init_fn(worker_id):                                                          
     np.random.seed(random.randrange(MAX_INT))
 
-def test(args, io):
+def test(args):
     dataset = MiniChallenge("data/MiniChallenge/", args.num_points, partition='test', radius=args.radius)    
     test_loader = DataLoader(dataset, num_workers=args.workers,
                               batch_size=args.batch_size, shuffle=False, drop_last=False, worker_init_fn=worker_init_fn)
@@ -58,8 +47,8 @@ def test(args, io):
 if __name__ == "__main__":
     # Training settings
     parser = argparse.ArgumentParser(description='Point Cloud Recognition')
-    parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
-                        help='Name of the experiment')
+    # parser.add_argument('--exp_name', type=str, default='exp', metavar='N',
+    #                     help='Name of the experiment')
     parser.add_argument('--out_file', type=str, default="checkpoints/cloud.ply", metavar='N',
                         help='Output filename')
     parser.add_argument('--batch_size', type=int, default=32, metavar='batch_size',
@@ -88,19 +77,14 @@ if __name__ == "__main__":
                         help='dropout rate')
     args = parser.parse_args()
 
-    _init_()
-
-    io = IOStream('checkpoints/' + args.exp_name + '/run.log')
-    io.cprint(str(args))
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     torch.manual_seed(args.seed)
     if args.cuda:
-        io.cprint(
-            'Using GPU : ' + str(torch.cuda.current_device()) + ' from ' + str(torch.cuda.device_count()) + ' devices')
+        print( 'Using GPU : ' + str(torch.cuda.current_device()) + ' from ' + str(torch.cuda.device_count()) + ' devices')
         torch.cuda.manual_seed(args.seed)
     else:
         io.cprint('Using CPU')
 
 
-    test(args, io)
+    test(args)
