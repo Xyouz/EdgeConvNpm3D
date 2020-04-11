@@ -30,7 +30,7 @@ python3 main_seg.py --exp_name=seg --workers 6 --num_points=1024 --k=20  --tnet 
 ## To apply a model
 Classify ```repeat``` * ```num_points``` points.
 ```
-python3 test_seg.py --exp_name=seg --model=checkpoints/seg/models/model.t7 --workers 6 --num_points=1024 --k=20  --tnet 1 --repeat 50
+python3 test_seg.py --model=checkpoints/seg/models/model.t7 --workers 6 --num_points=1024 --k=20  --tnet 1 --repeat 50
 ```
 
 kNN interpolation to get the labels of the remaining points.
