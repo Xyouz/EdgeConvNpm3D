@@ -12,7 +12,7 @@ from data import MiniChallenge
 from model import DGCNNSeg
 import numpy as np
 from torch.utils.data import DataLoader
-from util import cal_loss, IOStream, FocalLoss
+from util import cal_loss, FocalLoss
 import sklearn.metrics as metrics
 import random
 
@@ -30,7 +30,7 @@ MAX_INT = 2**32 - 1
 def worker_init_fn(worker_id):                                                          
     np.random.seed(random.randrange(MAX_INT))
 
-def train(args, io):
+def train(args):
     dataset = MiniChallenge(args.dataset, args.num_points, partition='train', radius=args.radius)    
     train_loader = DataLoader(dataset, num_workers=args.workers,
                               batch_size=args.batch_size, shuffle=False, drop_last=False, worker_init_fn=worker_init_fn)
@@ -91,7 +91,7 @@ def train(args, io):
                                                                                      train_true, train_pred),
                                                                                  metrics.balanced_accuracy_score(
                                                                                      train_true, train_pred))
-        io.cprint(outstr)
+        print(outstr)
         if epoch + 1 % 1000 == 0:
             torch.save(model.state_dict(), 'checkpoints/{}/models/model{}.t7'.format( args.exp_name,epoch))
     torch.save(model.state_dict(), 'checkpoints/%s/models/model.t7' % args.exp_name)
@@ -145,19 +145,14 @@ if __name__ == "__main__":
 
     _init_()
 
-    io = IOStream('checkpoints/' + args.exp_name + '/run.log')
-    io.cprint(str(args))
-
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     torch.manual_seed(args.seed)
     if args.cuda:
-        io.cprint(
+        print(
             'Using GPU : ' + str(torch.cuda.current_device()) + ' from ' + str(torch.cuda.device_count()) + ' devices')
         torch.cuda.manual_seed(args.seed)
     else:
-        io.cprint('Using CPU')
+        print('Using CPU')
 
-    if not args.eval:
-        train(args, io)
-    else:
-        test(args, io)
+    train(args)
+
