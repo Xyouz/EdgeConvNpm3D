@@ -44,3 +44,5 @@ python3 computeiou.py
 ```
 
 Note that more options are available for all of this programs. They can be displayed using the option ```-h```.
+
+For the Stanford indoor dataset code see the ```S3DIS``` branch.
