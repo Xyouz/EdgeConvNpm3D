@@ -32,6 +32,10 @@ Classify ```repeat``` * ```num_points``` points.
 ```
 python3 test_seg.py --model=checkpoints/seg/models/model.t7 --workers 6 --num_points=1024 --k=20  --tnet 1 --repeat 50
 ```
+with the provided pretrained model:
+```
+python3 test_seg.py --model=pretrained_models/model.t7 --workers 6 --num_points=1024 --k=20  --tnet 1 --repeat 50
+```
 
 kNN interpolation to get the labels of the remaining points.
 ```
