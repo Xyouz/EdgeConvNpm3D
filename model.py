@@ -52,38 +52,6 @@ def get_graph_feature(x, k=20, idx=None):
   
     return feature
 
-
-class PointNet(nn.Module):
-    def __init__(self, args, output_channels=40):
-        super(PointNet, self).__init__()
-        self.args = args
-        self.conv1 = nn.Conv1d(3, 64, kernel_size=1, bias=False)
-        self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
-        self.conv3 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
-        self.conv4 = nn.Conv1d(64, 128, kernel_size=1, bias=False)
-        self.conv5 = nn.Conv1d(128, args.emb_dims, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm1d(64)
-        self.bn2 = nn.BatchNorm1d(64)
-        self.bn3 = nn.BatchNorm1d(64)
-        self.bn4 = nn.BatchNorm1d(128)
-        self.bn5 = nn.BatchNorm1d(args.emb_dims)
-        self.linear1 = nn.Linear(args.emb_dims, 512, bias=False)
-        self.bn6 = nn.BatchNorm1d(512)
-        self.dp1 = nn.Dropout()
-        self.linear2 = nn.Linear(512, output_channels)
-
-    def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = F.relu(self.bn4(self.conv4(x)))
-        x = F.relu(self.bn5(self.conv5(x)))
-        x = F.adaptive_max_pool1d(x, 1).squeeze()
-        x = F.relu(self.bn6(self.linear1(x)))
-        x = self.dp1(x)
-        x = self.linear2(x)
-        return x
-
 class EdgeConv(nn.Module):
     def __init__(self, input_channels, output_channels, k):
         super().__init__()
@@ -114,52 +82,6 @@ class EdgeConv(nn.Module):
         x = get_graph_feature(x, k=self.k)
         x = self.layers(x)
         x = x.max(dim=-1, keepdim=False)[0]
-        return x
-
-class DGCNN(nn.Module):
-    def __init__(self, args, output_channels=40):
-        super(DGCNN, self).__init__()
-        self.args = args
-        self.k = args.k
-        
-
-        self.edge1 = EdgeConv(3, 64, self.k)
-        self.edge2 = EdgeConv(64, 64, self.k)
-        self.edge3 = EdgeConv(64, 128, self.k)
-        self.edge4 = EdgeConv(128, 256, self.k)
-
-        self.bn5 = nn.BatchNorm1d(args.emb_dims)
-
-        self.conv5 = nn.Sequential(nn.Conv1d(512, args.emb_dims, kernel_size=1, bias=False),
-                                   self.bn5,
-                                   nn.LeakyReLU(negative_slope=0.2))
-        self.linear1 = nn.Linear(args.emb_dims*2, 512, bias=False)
-        self.bn6 = nn.BatchNorm1d(512)
-        self.dp1 = nn.Dropout(p=args.dropout)
-        self.linear2 = nn.Linear(512, 256)
-        self.bn7 = nn.BatchNorm1d(256)
-        self.dp2 = nn.Dropout(p=args.dropout)
-        self.linear3 = nn.Linear(256, output_channels)
-
-    def forward(self, x):
-        batch_size = x.size(0)
-        x1 = self.edge1(x)
-        x2 = self.edge2(x1)
-        x3 = self.edge3(x2)
-        x4 = self.edge4(x3)
-
-        x = torch.cat((x1, x2, x3, x4), dim=1)
-
-        x = self.conv5(x)
-        x1 = F.adaptive_max_pool1d(x, 1).view(batch_size, -1)
-        x2 = F.adaptive_avg_pool1d(x, 1).view(batch_size, -1)
-        x = torch.cat((x1, x2), 1)
-
-        x = F.leaky_relu(self.bn6(self.linear1(x)), negative_slope=0.2)
-        x = self.dp1(x)
-        x = F.leaky_relu(self.bn7(self.linear2(x)), negative_slope=0.2)
-        x = self.dp2(x)
-        x = self.linear3(x)
         return x
 
 class TransformNet(nn.Module):
