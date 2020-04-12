@@ -84,7 +84,7 @@ if __name__ == "__main__":
         print( 'Using GPU : ' + str(torch.cuda.current_device()) + ' from ' + str(torch.cuda.device_count()) + ' devices')
         torch.cuda.manual_seed(args.seed)
     else:
-        io.cprint('Using CPU')
+        print('Using CPU')
 
 
     test(args)
