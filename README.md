@@ -20,7 +20,7 @@ You have to download `Stanford3dDataset_v1.2_Aligned_Version.zip` manually from 
 - Train in area 1-5
 
 ```
-python main_semseg.py --exp_name=semseg --test_area=6
+python main_seg.py --exp_name=semseg --test_area=6
 ```
 
 ### Run the evaluation script after training finished:
@@ -28,7 +28,7 @@ python main_semseg.py --exp_name=semseg --test_area=6
 - Evaluate with the trained model :
 
 ```
-python main_semseg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=checkpoints/semseg/models/
+python main_seg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=checkpoints/semseg/models/
 ```
 
 
@@ -37,5 +37,5 @@ python main_semseg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model
 - Evaluate in area 6 with our pretrained model
 
 ```
-python main_semseg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=pretrained/semseg/
+python main_seg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=pretrained/semseg/
 ```
