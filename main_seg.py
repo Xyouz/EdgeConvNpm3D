@@ -34,7 +34,7 @@ def calculate_sem_IoU(pred_np, seg_np):
     return I_all / U_all
 
 
-def train(args, io):
+def train(args):
     train_loader = DataLoader(S3DIS(partition='train', num_points=args.num_points, test_area=args.test_area),
                               num_workers=args.workers, batch_size=args.batch_size, shuffle=True, drop_last=True)
     test_loader = DataLoader(S3DIS(partition='test', num_points=args.num_points, test_area=args.test_area),
@@ -168,7 +168,7 @@ def train(args, io):
             torch.save(model.state_dict(), 'checkpoints/%s/models/model_%s.t7' % (args.exp_name, args.test_area))
 
 
-def test(args, io):
+def test(args):
     all_true_cls = []
     all_pred_cls = []
     all_true_seg = []
@@ -188,7 +188,7 @@ def test(args, io):
                 raise Exception("Not implemented")
 
             #model = nn.DataParallel(model)
-            model.load_state_dict(torch.load('checkpoints\\semseg\\models\\model_6.t7'))
+            model.load_state_dict(torch.load(args.model))
             model = model.eval()
             test_acc = 0.0
             count = 0.0
@@ -283,6 +283,8 @@ if __name__ == "__main__":
                         help='Num of nearest neighbors to use')
     parser.add_argument('--model_root', type=str, default='', metavar='N',
                         help='Pretrained model root')
+    parser.add_argument('--model', type=str, default='checkpoints\\semseg\\models\\model_6.t7', metavar='N',
+                        help='Pretrained model')
     parser.add_argument('--workers', type=int, default=0, metavar='N',
                         help='Number of workers for dataloading.')
     args = parser.parse_args()
@@ -301,6 +303,6 @@ if __name__ == "__main__":
         print('Using CPU')
 
     if not args.eval:
-        train(args, io)
+        train(args)
     else:
-        test(args, io)
+        test(args)
