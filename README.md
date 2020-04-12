@@ -1,5 +1,4 @@
-#Segmentation of the Stanford indoor dataset
-
+# Segmentation of the Stanford indoor dataset
 
 &nbsp;
 ## Requirements
