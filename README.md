@@ -38,3 +38,6 @@ python main_seg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_ro
 ```
 python main_seg.py --exp_name=semseg_eval_6 --test_area=6 --eval=True --model_root=pretrained/semseg/
 ```
+
+
+Based on code from https://github.com/AnTao97/dgcnn.pytorch.
